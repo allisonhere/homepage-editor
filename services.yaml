@@ -1,0 +1,127 @@
+---
+- Media:
+    - Jellyfin:
+        icon: /images/icons/jellyfin.svg
+        href: http://192.168.86.74:8096
+        widget:
+          type: jellyfin
+          url: http://192.168.86.74:8096
+          key: 3b315ce4455a4ba1b0cb4d4c14838593
+          enableBlocks: true
+          enableNowPlaying: true
+          enableUser: true
+          enableMediaControl: false
+          showEpisodeNumber: true
+          expandOneStreamToTwoRows: false
+    - Plex:
+        icon: /images/icons/plex.svg
+        href: http://192.168.86.74:8066
+        widget:
+          type: tautulli
+          url: http://tautulli:8181
+          key: b7a04e1718c74f58b8c3c3be63710c57
+    - Calibre-Web:
+        icon: /images/icons/calibre.svg
+        href: http://192.168.86.74:8083
+        widget:
+          type: calibreweb
+          url: http://192.168.86.74:8083
+          username: allie
+          password: V*ocKI31
+          fields: ["books", "authors", "categories", "series"]
+
+- Network:
+    - Uptime Kuma:
+        icon: /images/icons/uptime-kuma.svg
+        href: http://192.168.86.74:3001
+        widget:
+          type: uptimekuma
+          url: http://192.168.86.74:3001
+          slug: uptime
+    - MySpeed:
+        icon: /images/icons/myspeed.svg
+        href: http://192.168.86.74:5216
+        widget:
+          type: myspeed
+          url: http://192.168.86.74:5216
+    - NextCloud:
+          icon: /images/icons/nextcloud.svg
+          href: https://alliehere.com/cloud/
+          widget:
+            type: nextcloud
+            url: https://alliehere.com/cloud/
+            username: allie
+            password: Logan4us0926
+          
+
+- Home Automation:
+    - Homebridge:
+        icon: /images/icons/homebridge.svg
+        href: http://192.168.86.74:8581
+        widget:
+          type: homebridge
+          url: http://192.168.86.74:8581
+          username: admin
+          password: vojecoki1
+          updates: true
+          child_bridges: true
+    - Home Assistant:
+        icon: /images/icons/homeassistant.svg
+        href: http://192.168.86.74:8123
+        widget:
+          type: homeassistant
+          url: http://192.168.86.74:8123
+          key: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiI4YmJkMzUwZTA1NWE0MmIzODBhZjFiOWVmOWZmYTgwNCIsImlhdCI6MTc1OTY4MzQxMSwiZXhwIjoyMDc1MDQzNDExfQ.rPvdJEeoCmtyx3S0KRPMDMD9vJseUlj2iSr6CnmelmM
+          custom:
+            - template: "{{ state_attr('climate.my_ecobee3', 'current_temperature') }}"
+              label: Current Temp
+            - template: "{{ state_attr('climate.my_ecobee3', 'hvac_action') }}"
+              label: HVAC Action
+            - template: "{{ states.switch|selectattr('state','equalto','on')|list|length }}"
+              label: switches on
+            - state: weather.forecast_home
+              label: wind speed
+              value: "{attributes.wind_speed} {attributes.wind_speed_unit}"
+
+#- System:
+#    - Glances:
+#        href: http://192.168.86.74:61208
+#        description: System Monitoring
+#        widget:
+#          type: glances
+#          url: http://192.168.86.74:61208
+#          metric: cpu
+#          version: 4
+#    - Glances Memory:
+#        widget:
+#          type: glances
+#          url: http://192.168.86.74:61208
+#          metric: mem
+#          version: 4
+#    - Glances Disk:
+#        widget:
+#          type: glances
+#          url: http://192.168.86.74:61208
+#          metric: fs
+#          version: 4
+
+- Containers:
+  # - Podman:
+  #     icon: /images/icons/podman.svg
+  #     href: https://192.168.86.74:9443
+  #     widget:
+  #       type: portainer
+  #       url: http://192.168.86.74:9443
+  #       env: 4
+  #       kubernetes: false # optional, defaults to false
+  #       key: ptr_9P8cOPCrvTYtILHc7KIL0uClCtEtq5Wukte5ZaPMmi4=
+  - Docker:
+      icon: /images/icons/docker.svg
+      href: https://192.168.86.74:9443
+      widget:
+        type: portainer
+        url: https://192.168.86.74:9443
+        env: 5
+        kubernetes: false # optional, defaults to false
+        key: ptr_9P8cOPCrvTYtILHc7KIL0uClCtEtq5Wukte5ZaPMmi4=
+

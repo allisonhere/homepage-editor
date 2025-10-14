@@ -1,0 +1,58 @@
+- Developer:
+  - Github:
+    - abbr: GH
+      href: https://github.com/allisonhere?tab=repositories
+      icon: /images/icons/github.svg
+  - Cpanel:
+    - abbr: CP
+      href: https://alliehere.com:2083/
+      icon: /images/icons/cpanel.svg
+  - Cockpit:
+    - abbr: CP
+      href: https://jarvis:9090/system
+      icon: /images/icons/cockpit.svg
+  - test:
+    - abbr: tt
+      href: test.com
+      icon: test.svg
+- Social:
+  - Reddit:
+    - abbr: RE
+      href: https://reddit.com/
+      icon: /images/icons/reddit.svg
+  - Twitch:
+    - abbr: TW
+      href: http://twitch.tv
+      icon: /images/icons/twitch.svg
+  - Facebook:
+    - abbr: FB
+      href: http://facebook.com
+      icon: /images/icons/facebook.svg
+- Entertainment:
+  - YouTube:
+    - abbr: YT
+      href: https://youtube.com/
+      icon: /images/icons/youtube.svg
+- Communication:
+  - Gmail:
+    - abbr: GM
+      href: https://gmail.com/
+      icon: /images/icons/gmail.svg
+  - Alliehere:
+    - abbr: AH
+      href: https://alliehere.com:2096/cpsess6530087998/3rdparty/roundcube/?_task=mail&_mbox=INBOX
+      icon: /images/icons/roundcube.svg
+- Stuffs:
+  - 1337X:
+    - abbr: 13
+      href: https://1337x.to/home/
+      icon: /images/icons/1337x.svg
+  - Z-Library:
+    - abbr: ZL
+      href: https://z-lib.id/
+      icon: /images/icons/zlib.svg
+- Servers:
+  - Webmin - Jarvis:
+    - abbr: WJ
+      href: http://jarvis:10000
+      icon: /images/icons/webmin.svg

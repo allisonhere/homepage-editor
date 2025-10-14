@@ -1,0 +1,30 @@
+background:
+  blur: xl
+  brightness: 10
+  image: /images/background.jpg
+  opacity: 30
+  saturate: 80
+layout:
+- Developer:
+    columns: 3
+    style: row
+- Social:
+    columns: 4
+    style: row
+- Entertainment:
+    columns: 3
+    style: row
+- Communication:
+    columns: 3
+    style: row
+- Stuffs:
+    columns: 3
+    style: row
+- Servers:
+    style: row
+    columns: 3
+providers:
+  openweathermap: openweathermapapikey
+  weatherapi: weatherapiapikey
+title: Allie's Apps
+useEqualHeights: true
