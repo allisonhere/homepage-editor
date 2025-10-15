@@ -141,6 +141,7 @@ class ConfigPathWindow(tk.Toplevel):
             self.current_folder_var.set(folder)
             self.config_folder = folder
             self.update_folder_info()
+            self.auto_update_config_paths(folder)
     
     def update_folder_info(self):
         """Update folder information display"""
@@ -163,6 +164,48 @@ class ConfigPathWindow(tk.Toplevel):
             self.folder_info_var.set(info_text)
         except Exception as e:
             self.folder_info_var.set(f"Error reading folder: {e}")
+    
+    def auto_update_config_paths(self, folder):
+        """Automatically update all config paths when a new folder is selected"""
+        if not folder:
+            return
+        
+        # Define the standard config files and their expected names
+        config_files = {
+            "bookmarks": "bookmarks.yaml",
+            "settings": "settings.yaml", 
+            "services": "services.yaml",
+            "widgets": "widgets.yaml",
+            "docker": "docker.yaml",
+            "kubernetes": "kubernetes.yaml",
+            "proxmox": "proxmox.yaml"
+        }
+        
+        # Update all config path entries
+        all_entries = {**self.core_entries, **self.services_entries}
+        updated_count = 0
+        
+        for config_name, filename in config_files.items():
+            if config_name in all_entries:
+                new_path = os.path.join(folder, filename)
+                # Clear the entry and insert the new path
+                entry = all_entries[config_name]
+                entry.delete(0, tk.END)
+                entry.insert(0, new_path)
+                updated_count += 1
+        
+        # Update icon paths to be relative to the new folder
+        if hasattr(self, 'icon_base_path_var'):
+            # Keep the relative path structure
+            self.icon_base_path_var.set("dashboard-icons-main/svg")
+        
+        if hasattr(self, 'icon_output_path_var'):
+            # Keep the relative path structure  
+            self.icon_output_path_var.set("images/icons")
+        
+        # Show status message
+        if hasattr(self, 'status_var'):
+            self.status_var.set(f"✅ Automatically updated {updated_count} configuration paths to use folder: {os.path.basename(folder)}")
     
     def create_core_configs_tab(self):
         """Create the core configurations tab"""
@@ -539,8 +582,6 @@ class ConfigPathWindow(tk.Toplevel):
             if hasattr(self.parent, 'config_folder'):
                 self.parent.config_folder = new_folder
                 self.parent.title(f"Homepage Editor - Simple ({os.path.basename(new_folder)})")
-                if hasattr(self.parent, 'reload_data'):
-                    self.parent.reload_data()
         
         all_entries = {**self.core_entries, **self.services_entries}
         
@@ -572,6 +613,14 @@ class ConfigPathWindow(tk.Toplevel):
             output_path = self.icon_output_path_var.get().strip()
             if output_path:
                 config_manager.set_icon_output_path(output_path)
+        
+        # Reload data in parent GUI to reflect new config paths
+        if hasattr(self.parent, 'reload_data'):
+            # Force immediate reload
+            self.parent.reload_data()
+            # Also force update of the parent window
+            self.parent.update_idletasks()
+            self.parent.update()
         
         messagebox.showinfo("Success", "Configuration paths saved successfully!")
         self.destroy()

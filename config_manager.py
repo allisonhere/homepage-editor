@@ -122,18 +122,19 @@ class ConfigManager:
         try:
             path_obj = Path(path)
             
-            # Check if parent directory exists and is writable
+            # Check if parent directory exists, create it if it doesn't
             if not path_obj.parent.exists():
-                return False
+                try:
+                    path_obj.parent.mkdir(parents=True, exist_ok=True)
+                except (PermissionError, OSError):
+                    return False
             
-            # Check if we can write to the directory
-            test_file = path_obj.parent / ".test_write"
-            try:
-                test_file.touch()
-                test_file.unlink()
+            # For config directories, just check if we can access the parent
+            # Don't require write access since config files might be read-only
+            if path_obj.parent.exists():
                 return True
-            except (PermissionError, OSError):
-                return False
+            
+            return False
                 
         except Exception:
             return False
@@ -153,9 +154,10 @@ class ConfigManager:
                 if not os.access(path_obj, os.W_OK):
                     return False, "No write permission"
             else:
-                # Check if parent directory is writable
-                if not os.access(path_obj.parent, os.W_OK):
-                    return False, "No write permission to parent directory"
+                # For config files, just check if parent directory exists
+                # Don't require write access since config files might be read-only
+                if not path_obj.parent.exists():
+                    return False, "Parent directory does not exist"
             
             return True, "OK"
             

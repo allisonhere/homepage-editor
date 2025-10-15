@@ -11,6 +11,7 @@ import os
 from PIL import Image, ImageTk
 from icon_search import IconSearchWindow
 from config_ui import ConfigPathWindow
+from config_manager import config_manager
 
 class SimpleHomepageGUI(tk.Tk):
     def __init__(self):
@@ -36,7 +37,7 @@ class SimpleHomepageGUI(tk.Tk):
     def load_bookmarks(self):
         """Load bookmarks from YAML file"""
         try:
-            bookmarks_path = os.path.join(self.config_folder, self.bookmarks_file)
+            bookmarks_path = config_manager.get_config_path('bookmarks')
             if os.path.exists(bookmarks_path):
                 with open(bookmarks_path, 'r') as f:
                     return yaml.safe_load(f) or []
@@ -48,7 +49,7 @@ class SimpleHomepageGUI(tk.Tk):
     def save_bookmarks(self, data):
         """Save bookmarks to YAML file"""
         try:
-            bookmarks_path = os.path.join(self.config_folder, self.bookmarks_file)
+            bookmarks_path = config_manager.get_config_path('bookmarks')
             with open(bookmarks_path, 'w') as f:
                 yaml.dump(data, f, default_flow_style=False)
             return True
@@ -59,7 +60,7 @@ class SimpleHomepageGUI(tk.Tk):
     def load_settings(self):
         """Load settings from YAML file"""
         try:
-            settings_path = os.path.join(self.config_folder, self.settings_file)
+            settings_path = config_manager.get_config_path('settings')
             if os.path.exists(settings_path):
                 with open(settings_path, 'r') as f:
                     return yaml.safe_load(f) or {}
@@ -71,7 +72,7 @@ class SimpleHomepageGUI(tk.Tk):
     def save_settings(self, data):
         """Save settings to YAML file"""
         try:
-            settings_path = os.path.join(self.config_folder, self.settings_file)
+            settings_path = config_manager.get_config_path('settings')
             with open(settings_path, 'w') as f:
                 yaml.dump(data, f, default_flow_style=False)
             return True
@@ -180,17 +181,36 @@ class SimpleHomepageGUI(tk.Tk):
             messagebox.showinfo("Success", f"Switched to config folder:\n{folder}")
     
     def reload_data(self):
-        """Reload data from the current config folder"""
-        self.bookmarks = self.load_bookmarks()
-        self.settings = self.load_settings()
-        self.populate_categories()
+        """Reload data from the current config paths"""
+        # Update config folder from config_manager if it has changed
+        bookmarks_path = config_manager.get_config_path('bookmarks')
+        if bookmarks_path:
+            self.config_folder = os.path.dirname(bookmarks_path)
+        
+        # Clear current data
         self.bookmarks_listbox.delete(0, tk.END)
         self.current_category = None
+        
+        # Load new data
+        self.bookmarks = self.load_bookmarks()
+        self.settings = self.load_settings()
+        
+        # Populate categories with new data
+        self.populate_categories()
+        
+        # Force UI update with multiple methods
+        self.update_idletasks()
+        self.update()
+        self.categories_listbox.update()
+        self.categories_listbox.update_idletasks()
+        
+        # Update title and status
+        self.title(f"Homepage Editor - Simple ({os.path.basename(self.config_folder)})")
         self.status_var.set(f"Config folder: {self.config_folder}")
         
         # Check if config files exist
-        bookmarks_path = os.path.join(self.config_folder, self.bookmarks_file)
-        settings_path = os.path.join(self.config_folder, self.settings_file)
+        bookmarks_path = config_manager.get_config_path('bookmarks')
+        settings_path = config_manager.get_config_path('settings')
         
         if not os.path.exists(bookmarks_path) or not os.path.exists(settings_path):
             if messagebox.askyesno("Create Config Files", 
@@ -282,12 +302,6 @@ class SimpleHomepageGUI(tk.Tk):
         self.bookmarks.append({category_name: []})
         self.save_bookmarks(self.bookmarks)
         
-        # Update layout
-        if "layout" not in self.settings:
-            self.settings["layout"] = []
-        self.settings["layout"].append({category_name: {"style": "row", "columns": 3}})
-        self.save_settings(self.settings)
-        
         self.populate_categories()
         self.status_var.set(f"Added category: {category_name}")
         messagebox.showinfo("Success", "Category added successfully!")
@@ -328,15 +342,30 @@ class SimpleHomepageGUI(tk.Tk):
         if dialog.result:
             bookmark = dialog.result
             
+            # Convert to proper YAML structure
+            name = bookmark['name']
+            url = bookmark['url']
+            icon = bookmark['icon']
+            abbr = bookmark['abbr']
+            
+            # Create proper bookmark structure
+            proper_bookmark = {
+                name: [{
+                    'abbr': abbr,
+                    'href': url,  # Convert 'url' to 'href'
+                    'icon': icon
+                }]
+            }
+            
             # Add to bookmarks
             for item in self.bookmarks:
                 if isinstance(item, dict) and self.current_category in item:
-                    item[self.current_category].append(bookmark)
+                    item[self.current_category].append(proper_bookmark)
                     break
             
             self.save_bookmarks(self.bookmarks)
             self.populate_bookmarks(self.current_category)
-            self.status_var.set(f"Added bookmark: {bookmark['name']}")
+            self.status_var.set(f"Added bookmark: {name}")
             messagebox.showinfo("Success", "Bookmark added successfully!")
     
     def edit_bookmark(self):
@@ -381,11 +410,31 @@ class SimpleHomepageGUI(tk.Tk):
         if bookmark:
             dialog = BookmarkDialog(self, "Edit Bookmark", bookmark)
             if dialog.result:
-                # Update the bookmark
-                bookmark.update(dialog.result)
+                # Convert to proper YAML structure
+                name = dialog.result['name']
+                url = dialog.result['url']
+                icon = dialog.result['icon']
+                abbr = dialog.result['abbr']
+                
+                # Find and update the bookmark in the proper structure
+                for item in self.bookmarks:
+                    if isinstance(item, dict) and self.current_category in item:
+                        for i, bm in enumerate(item[self.current_category]):
+                            if isinstance(bm, dict) and bookmark_name in bm:
+                                # Update the bookmark structure
+                                item[self.current_category][i] = {
+                                    name: [{
+                                        'abbr': abbr,
+                                        'href': url,  # Convert 'url' to 'href'
+                                        'icon': icon
+                                    }]
+                                }
+                                break
+                        break
+                
                 self.save_bookmarks(self.bookmarks)
                 self.populate_bookmarks(self.current_category)
-                self.status_var.set(f"Updated bookmark: {bookmark['name']}")
+                self.status_var.set(f"Updated bookmark: {name}")
                 messagebox.showinfo("Success", "Bookmark updated successfully!")
     
     def delete_bookmark(self):
@@ -430,10 +479,12 @@ class BookmarkDialog(tk.Toplevel):
             self.name_var = tk.StringVar(value=bookmark.get('name', ''))
             self.url_var = tk.StringVar(value=bookmark.get('url', ''))
             self.icon_var = tk.StringVar(value=bookmark.get('icon', ''))
+            self.abbr_var = tk.StringVar(value=bookmark.get('abbr', ''))
         else:
             self.name_var = tk.StringVar()
             self.url_var = tk.StringVar()
             self.icon_var = tk.StringVar()
+            self.abbr_var = tk.StringVar()
         
         self.create_widgets()
         self.grab_set()
@@ -448,20 +499,24 @@ class BookmarkDialog(tk.Toplevel):
         ttk.Label(frame, text="Name:").grid(row=0, column=0, sticky=tk.W, pady=2)
         ttk.Entry(frame, textvariable=self.name_var, width=30).grid(row=0, column=1, sticky=tk.W, pady=2)
         
+        # Abbreviation
+        ttk.Label(frame, text="Abbr:").grid(row=1, column=0, sticky=tk.W, pady=2)
+        ttk.Entry(frame, textvariable=self.abbr_var, width=30).grid(row=1, column=1, sticky=tk.W, pady=2)
+        
         # URL
-        ttk.Label(frame, text="URL:").grid(row=1, column=0, sticky=tk.W, pady=2)
-        ttk.Entry(frame, textvariable=self.url_var, width=30).grid(row=1, column=1, sticky=tk.W, pady=2)
+        ttk.Label(frame, text="URL:").grid(row=2, column=0, sticky=tk.W, pady=2)
+        ttk.Entry(frame, textvariable=self.url_var, width=30).grid(row=2, column=1, sticky=tk.W, pady=2)
         
         # Icon
-        ttk.Label(frame, text="Icon:").grid(row=2, column=0, sticky=tk.W, pady=2)
+        ttk.Label(frame, text="Icon:").grid(row=3, column=0, sticky=tk.W, pady=2)
         icon_frame = ttk.Frame(frame)
-        icon_frame.grid(row=2, column=1, sticky=tk.W, pady=2)
+        icon_frame.grid(row=3, column=1, sticky=tk.W, pady=2)
         ttk.Entry(icon_frame, textvariable=self.icon_var, width=25).pack(side=tk.LEFT)
         ttk.Button(icon_frame, text="Search", command=self.search_icon, width=8).pack(side=tk.LEFT, padx=(5, 0))
         
         # Buttons
         button_frame = ttk.Frame(frame)
-        button_frame.grid(row=3, column=0, columnspan=2, pady=10)
+        button_frame.grid(row=4, column=0, columnspan=2, pady=10)
         
         ttk.Button(button_frame, text="OK", command=self.ok_clicked).pack(side=tk.LEFT, padx=5)
         ttk.Button(button_frame, text="Cancel", command=self.destroy).pack(side=tk.LEFT, padx=5)
@@ -492,15 +547,21 @@ class BookmarkDialog(tk.Toplevel):
         name = self.name_var.get().strip()
         url = self.url_var.get().strip()
         icon = self.icon_var.get().strip()
+        abbr = self.abbr_var.get().strip()
         
         if not name or not url:
             messagebox.showerror("Error", "Name and URL are required!")
             return
         
+        # Auto-generate abbreviation if not provided
+        if not abbr:
+            abbr = name[:2].upper()
+        
         self.result = {
             'name': name,
             'url': url,
-            'icon': icon
+            'icon': icon,
+            'abbr': abbr
         }
         self.destroy()
 

@@ -1,11 +1,11 @@
 {
-  "bookmarks": "/home/allie/projects/homepage/bookmarks.yaml",
-  "settings": "",
-  "services": "",
-  "widgets": "",
-  "docker": "",
-  "kubernetes": "",
-  "proxmox": "",
+  "bookmarks": "/home/allie/.config/homepage/bookmarks.yaml",
+  "settings": "/home/allie/.config/homepage/settings.yaml",
+  "services": "/home/allie/.config/homepage/services.yaml",
+  "widgets": "/home/allie/.config/homepage/widgets.yaml",
+  "docker": "/home/allie/.config/homepage/docker.yaml",
+  "kubernetes": "/home/allie/.config/homepage/kubernetes.yaml",
+  "proxmox": "/home/allie/.config/homepage/proxmox.yaml",
   "icon_base_path": "dashboard-icons-main/svg",
   "icon_output_path": "images/icons"
 }
