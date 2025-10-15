@@ -5,16 +5,16 @@ A comprehensive GUI application for managing your [Homepage](https://gethomepage
 ## 🚀 Features
 
 ### 📚 **Bookmark Management**
-- Add, edit, and delete bookmarks with full validation
+- Add, edit, and delete bookmarks with validation
 - Support for custom abbreviations and icons
-- Real-time YAML validation and error checking
-- Bulk operations and data integrity checks
+- YAML validation and error checking
+- Data integrity checks and error reporting
 
 ### 📁 **Category Management**
-- Create and organize bookmark categories
-- Drag-and-drop category reordering
-- Category-specific settings and layouts
-- Automatic category synchronization
+- Create and delete bookmark categories
+- Organize bookmarks within categories
+- Category selection and navigation
+- Automatic category synchronization with Homepage
 
 ### 🎨 **Advanced Icon Management**
 - **Smart Icon Downloader** - Download icons from dashboard-icons repository
