@@ -9,6 +9,7 @@ import time
 from collections import defaultdict
 import re
 from config_manager import config_manager
+from icon_manager import IconManager
 
 # Try to import cairosvg for SVG support, fallback to PNG if not available
 try:
@@ -364,8 +365,9 @@ class IconSearchWindow(tk.Toplevel):
             new_icon_path = os.path.join(config_manager.get_icon_output_path(), os.path.basename(icon_path))
             shutil.copy(icon_path, new_icon_path)
             
-            # Update the icon field in the parent window
-            self.update_parent_icon_field(os.path.abspath(new_icon_path))
+            # Update the icon field in the parent window with the correct path for Homepage
+            icon_path_for_homepage = f"/images/icons/{os.path.basename(icon_path)}"
+            self.update_parent_icon_field(icon_path_for_homepage)
             
             self.destroy()
             
@@ -375,27 +377,19 @@ class IconSearchWindow(tk.Toplevel):
     def update_parent_icon_field(self, icon_path):
         """Update the parent window's icon field with the icon path"""
         try:
-            # Convert absolute path to the format expected by Homepage
-            # From: /full/path/to/output/icons/webmin.svg
-            # To: /images/icons/webmin.svg (or whatever the output path is)
-            icon_name = os.path.basename(icon_path)
-            output_path = config_manager.get_icon_output_path()
-            # Ensure output_path doesn't start with / to avoid double slashes
-            if output_path.startswith('/'):
-                output_path = output_path[1:]
-            homepage_icon_path = f"/{output_path}/{icon_name}"
+            # icon_path should already be in the correct format for Homepage (e.g., /images/icons/iconname.svg)
             
             # Just set the icon_var - this is what BookmarkDialog uses
             if hasattr(self.parent, 'icon_var'):
-                self.parent.icon_var.set(homepage_icon_path)
+                self.parent.icon_var.set(icon_path)
             else:
                 # For main GUI, update the Icon entry field directly
                 if hasattr(self.parent, 'entries') and 'Icon' in self.parent.entries:
                     self.parent.entries['Icon'].delete(0, tk.END)
-                    self.parent.entries['Icon'].insert(0, homepage_icon_path)
+                    self.parent.entries['Icon'].insert(0, icon_path)
                 else:
                     # Fallback message
-                    messagebox.showinfo("Icon Selected", f"Icon path: {homepage_icon_path}")
+                    messagebox.showinfo("Icon Selected", f"Icon path: {icon_path}")
         except Exception as e:
             print(f"Error updating parent icon field: {e}")
             messagebox.showinfo("Icon Selected", f"Icon path: {icon_path}")
@@ -407,10 +401,64 @@ class IconSearchWindow(tk.Toplevel):
             new_icon_path = os.path.join(config_manager.get_icon_output_path(), os.path.basename(icon_path))
             shutil.copy(icon_path, new_icon_path)
             
-            # Update the icon field in the parent window
-            self.update_parent_icon_field(os.path.abspath(new_icon_path))
+            # Update the icon field in the parent window with the correct path for Homepage
+            icon_path_for_homepage = f"/images/icons/{os.path.basename(icon_path)}"
+            self.update_parent_icon_field(icon_path_for_homepage)
             
             self.destroy()
             
         except Exception as e:
             messagebox.showerror("Error", f"Failed to copy icon: {e}")
+    
+    def download_and_select_icon(self, icon_name):
+        """Download icon from dashboard-icons and select it"""
+        try:
+            # Initialize icon manager
+            icon_manager = IconManager()
+            
+            # Check if dashboard icons are available
+            if not icon_manager.is_dashboard_icons_available():
+                response = messagebox.askyesno(
+                    "Download Required", 
+                    "Dashboard icons not available. Would you like to download them now?\n\nThis will download ~200MB of icon data."
+                )
+                if response:
+                    # Download dashboard icons
+                    self.status_label.config(text="Downloading dashboard icons...")
+                    self.update()
+                    
+                    if not icon_manager.download_dashboard_icons():
+                        messagebox.showerror("Error", "Failed to download dashboard icons. Please check your internet connection.")
+                        return
+                    
+                    self.status_label.config(text="Dashboard icons downloaded successfully!")
+                else:
+                    return
+            
+            # Download the specific icon to the icon manager's output directory first
+            self.status_label.config(text=f"Downloading {icon_name}...")
+            self.update()
+            
+            if icon_manager.download_icon(icon_name):
+                # Now copy it to the configured icon output path for Homepage
+                source_path = icon_manager.output_dir / f"{icon_name}.svg"
+                dest_path = os.path.join(config_manager.get_icon_output_path(), f"{icon_name}.svg")
+                
+                # Ensure the destination directory exists
+                os.makedirs(os.path.dirname(dest_path), exist_ok=True)
+                
+                # Copy the icon to the configured path
+                shutil.copy2(source_path, dest_path)
+                
+                # Update the parent with the correct path for Homepage
+                icon_path = f"/images/icons/{icon_name}.svg"
+                self.update_parent_icon_field(icon_path)
+                self.status_label.config(text=f"✅ Downloaded and selected: {icon_name}")
+                self.destroy()
+            else:
+                messagebox.showerror("Error", f"Failed to download icon: {icon_name}")
+                self.status_label.config(text="Download failed")
+                
+        except Exception as e:
+            messagebox.showerror("Error", f"Failed to download icon: {e}")
+            self.status_label.config(text="Download failed")

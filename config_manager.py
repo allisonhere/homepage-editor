@@ -551,7 +551,13 @@ class ConfigManager:
     
     def get_icon_output_path(self):
         """Get the output path for copied icons"""
-        return self.icon_output_path
+        # If it's already an absolute path, return it
+        if os.path.isabs(self.icon_output_path):
+            return self.icon_output_path
+        
+        # Otherwise, resolve it relative to the project root
+        project_root = os.path.dirname(os.path.abspath(__file__))
+        return os.path.join(project_root, self.icon_output_path)
     
     def set_icon_output_path(self, path):
         """Set the output path for copied icons"""

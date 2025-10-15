@@ -387,23 +387,17 @@ class SimpleHomepageGUI(tk.Tk):
             if isinstance(item, dict) and self.current_category in item:
                 for bm in item[self.current_category]:
                     if isinstance(bm, dict):
-                        # New format
-                        if bm.get('name') == bookmark_name:
-                            bookmark = bm
-                            break
-                        # Old format - convert to new format
-                        elif bookmark_name in bm:
+                        # New format - bookmark is {name: [{abbr, href, icon}]}
+                        if bookmark_name in bm:
                             bookmark_data = bm[bookmark_name]
                             if isinstance(bookmark_data, list) and len(bookmark_data) > 0:
                                 info = bookmark_data[0]
                                 bookmark = {
                                     'name': bookmark_name,
                                     'url': info.get('href', ''),
-                                    'icon': info.get('icon', '')
+                                    'icon': info.get('icon', ''),
+                                    'abbr': info.get('abbr', '')
                                 }
-                                # Update the bookmark in place
-                                bm.clear()
-                                bm.update(bookmark)
                                 break
                 break
         

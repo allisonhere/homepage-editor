@@ -7,5 +7,5 @@
   "kubernetes": "/home/allie/.config/homepage/kubernetes.yaml",
   "proxmox": "/home/allie/.config/homepage/proxmox.yaml",
   "icon_base_path": "dashboard-icons-main/svg",
-  "icon_output_path": "images/icons"
+  "icon_output_path": "/home/allie/.config/homepage/images/icons"
 }
