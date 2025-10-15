@@ -10,6 +10,7 @@ import yaml
 import os
 from PIL import Image, ImageTk
 from icon_search import IconSearchWindow
+from config_ui import ConfigPathWindow
 
 class SimpleHomepageGUI(tk.Tk):
     def __init__(self):
@@ -132,8 +133,6 @@ class SimpleHomepageGUI(tk.Tk):
         # File menu
         file_menu = tk.Menu(menubar, tearoff=0)
         menubar.add_cascade(label="File", menu=file_menu)
-        file_menu.add_command(label="Select Config Folder...", command=self.select_config_folder)
-        file_menu.add_separator()
         file_menu.add_command(label="Reload Data", command=self.reload_data)
         file_menu.add_separator()
         file_menu.add_command(label="Exit", command=self.quit)
@@ -141,6 +140,8 @@ class SimpleHomepageGUI(tk.Tk):
         # Tools menu
         tools_menu = tk.Menu(menubar, tearoff=0)
         menubar.add_cascade(label="Tools", menu=tools_menu)
+        tools_menu.add_command(label="Configuration...", command=self.open_configuration)
+        tools_menu.add_separator()
         tools_menu.add_command(label="Icon Search", command=self.open_icon_search)
     
     def open_icon_search(self):
@@ -154,6 +155,10 @@ class SimpleHomepageGUI(tk.Tk):
     def search_icon(self):
         """Alias for open_icon_search for consistency"""
         self.open_icon_search()
+    
+    def open_configuration(self):
+        """Open unified configuration window"""
+        ConfigPathWindow(self, config_folder=self.config_folder)
     
     def bind_shortcuts(self):
         """Bind keyboard shortcuts"""
@@ -476,12 +481,8 @@ class BookmarkDialog(tk.Toplevel):
             # Open icon search window
             search_window = IconSearchWindow(self, current_icon)
             
-            # Wait for the window to close and get the result
-            self.wait_window(search_window)
-            
-            # Check if an icon was selected
-            if hasattr(search_window, 'selected_icon') and search_window.selected_icon:
-                self.icon_var.set(search_window.selected_icon)
+            # The IconSearchWindow will automatically update self.icon_var
+            # when an icon is selected, so we don't need to do anything here
                 
         except Exception as e:
             messagebox.showerror("Error", f"Failed to open icon search: {e}")

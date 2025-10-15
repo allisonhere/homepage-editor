@@ -9,17 +9,19 @@ from tkinter import ttk, messagebox, filedialog
 from pathlib import Path
 from typing import Dict, Any
 import threading
+import os
 from config_manager import config_manager
 
 class ConfigPathWindow(tk.Toplevel):
     """Window for managing configuration file paths"""
     
-    def __init__(self, parent):
+    def __init__(self, parent, config_folder=None):
         super().__init__(parent)
         self.transient(parent)
-        self.title("Configuration Paths Manager")
+        self.title("Configuration Manager")
         self.geometry("800x600")
         self.parent = parent
+        self.config_folder = config_folder
         
         self.create_widgets()
         self.load_current_paths()
@@ -46,8 +48,14 @@ class ConfigPathWindow(tk.Toplevel):
         self.notebook = ttk.Notebook(main_frame)
         self.notebook.pack(fill=tk.BOTH, expand=True)
         
+        # Folder selection tab
+        self.create_folder_selection_tab()
+        
         # Core configs tab
         self.create_core_configs_tab()
+        
+        # Icon configuration tab
+        self.create_icon_config_tab()
         
         # Services tab
         self.create_services_tab()
@@ -79,6 +87,82 @@ class ConfigPathWindow(tk.Toplevel):
         
         ttk.Button(button_frame, text="Cancel", 
                   command=self.destroy).pack(side=tk.RIGHT)
+    
+    def create_folder_selection_tab(self):
+        """Create the folder selection tab"""
+        folder_frame = ttk.Frame(self.notebook, padding="10")
+        self.notebook.add(folder_frame, text="📁 Folder")
+        
+        # Header description
+        header_frame = ttk.Frame(folder_frame)
+        header_frame.pack(fill=tk.X, pady=(0, 20))
+        
+        ttk.Label(header_frame, 
+                 text="Select the folder containing your Homepage configuration files",
+                 font=("TkDefaultFont", 10, "bold")).pack(anchor="w")
+        
+        ttk.Label(header_frame, 
+                 text="This determines which configuration files the editor will work with.",
+                 foreground="gray").pack(anchor="w", pady=(2, 0))
+        
+        # Current folder display
+        current_frame = ttk.LabelFrame(folder_frame, text="Current Configuration Folder", padding="10")
+        current_frame.pack(fill=tk.X, pady=(0, 20))
+        
+        self.current_folder_var = tk.StringVar()
+        self.current_folder_entry = ttk.Entry(current_frame, textvariable=self.current_folder_var, 
+                                            state="readonly", width=60)
+        self.current_folder_entry.pack(side=tk.LEFT, fill=tk.X, expand=True)
+        
+        ttk.Button(current_frame, text="Browse", 
+                  command=self.browse_config_folder).pack(side=tk.RIGHT, padx=(10, 0))
+        
+        # Folder info
+        info_frame = ttk.LabelFrame(folder_frame, text="Folder Information", padding="10")
+        info_frame.pack(fill=tk.X, pady=(0, 20))
+        
+        self.folder_info_var = tk.StringVar()
+        self.folder_info_label = ttk.Label(info_frame, textvariable=self.folder_info_var, 
+                                         font=("Courier", 9), foreground="blue")
+        self.folder_info_label.pack(anchor="w")
+        
+        # Load current folder
+        if self.config_folder:
+            self.current_folder_var.set(self.config_folder)
+            self.update_folder_info()
+    
+    def browse_config_folder(self):
+        """Browse for configuration folder"""
+        folder = filedialog.askdirectory(
+            title="Select Configuration Folder",
+            initialdir=self.config_folder or os.getcwd()
+        )
+        if folder:
+            self.current_folder_var.set(folder)
+            self.config_folder = folder
+            self.update_folder_info()
+    
+    def update_folder_info(self):
+        """Update folder information display"""
+        folder = self.current_folder_var.get()
+        if not folder:
+            self.folder_info_var.set("No folder selected")
+            return
+        
+        try:
+            # Check what files exist in the folder
+            files = os.listdir(folder) if os.path.exists(folder) else []
+            yaml_files = [f for f in files if f.endswith('.yaml')]
+            json_files = [f for f in files if f.endswith('.json')]
+            
+            info_text = f"Folder: {folder}\n"
+            info_text += f"YAML files: {', '.join(yaml_files) if yaml_files else 'None'}\n"
+            info_text += f"JSON files: {', '.join(json_files) if json_files else 'None'}\n"
+            info_text += f"Total files: {len(files)}"
+            
+            self.folder_info_var.set(info_text)
+        except Exception as e:
+            self.folder_info_var.set(f"Error reading folder: {e}")
     
     def create_core_configs_tab(self):
         """Create the core configurations tab"""
@@ -135,6 +219,149 @@ class ConfigPathWindow(tk.Toplevel):
         
         for i, config_name in enumerate(service_configs):
             self.create_config_entry(scrollable_frame, config_name, i, service_configs)
+    
+    def create_icon_config_tab(self):
+        """Create the icon configuration tab"""
+        icon_frame = ttk.Frame(self.notebook, padding="10")
+        self.notebook.add(icon_frame, text="🎨 Icons")
+        
+        # Header description
+        header_frame = ttk.Frame(icon_frame)
+        header_frame.pack(fill=tk.X, pady=(0, 20))
+        
+        ttk.Label(header_frame, 
+                 text="Configure where to find icon files and where to store selected icons",
+                 font=("TkDefaultFont", 10, "bold")).pack(anchor="w")
+        
+        ttk.Label(header_frame, 
+                 text="This affects the Icon Search feature and how icons are stored in your bookmarks.",
+                 foreground="gray").pack(anchor="w", pady=(2, 0))
+        
+        # Icon base path configuration
+        base_path_frame = ttk.LabelFrame(icon_frame, text="Icon Source Path", padding="10")
+        base_path_frame.pack(fill=tk.X, pady=(0, 20))
+        
+        ttk.Label(base_path_frame, 
+                 text="Source directory for icon files when copying selected icons (e.g., dashboard-icons-main/svg):").pack(anchor="w")
+        
+        base_path_input_frame = ttk.Frame(base_path_frame)
+        base_path_input_frame.pack(fill=tk.X, pady=(5, 0))
+        
+        self.icon_base_path_var = tk.StringVar()
+        self.icon_base_path_entry = ttk.Entry(base_path_input_frame, textvariable=self.icon_base_path_var, width=50)
+        self.icon_base_path_entry.pack(side=tk.LEFT, fill=tk.X, expand=True)
+        
+        ttk.Button(base_path_input_frame, text="Browse", 
+                  command=self.browse_icon_base_path).pack(side=tk.RIGHT, padx=(10, 0))
+        
+        # Icon output path configuration
+        output_path_frame = ttk.LabelFrame(icon_frame, text="Icon Output Path", padding="10")
+        output_path_frame.pack(fill=tk.X, pady=(0, 20))
+        
+        ttk.Label(output_path_frame, 
+                 text="Directory where selected icons will be copied (e.g., images/icons):").pack(anchor="w")
+        
+        output_path_input_frame = ttk.Frame(output_path_frame)
+        output_path_input_frame.pack(fill=tk.X, pady=(5, 0))
+        
+        self.icon_output_path_var = tk.StringVar()
+        self.icon_output_path_entry = ttk.Entry(output_path_input_frame, textvariable=self.icon_output_path_var, width=50)
+        self.icon_output_path_entry.pack(side=tk.LEFT, fill=tk.X, expand=True)
+        
+        ttk.Button(output_path_input_frame, text="Browse", 
+                  command=self.browse_icon_output_path).pack(side=tk.RIGHT, padx=(10, 0))
+        
+        # Icon path preview
+        preview_frame = ttk.LabelFrame(icon_frame, text="Path Preview", padding="10")
+        preview_frame.pack(fill=tk.X, pady=(0, 20))
+        
+        ttk.Label(preview_frame, text="Example: If you select 'webmin.svg', it will be stored as:").pack(anchor="w")
+        
+        self.icon_preview_var = tk.StringVar()
+        self.icon_preview_label = ttk.Label(preview_frame, textvariable=self.icon_preview_var, 
+                                          font=("Courier", 10), foreground="blue")
+        self.icon_preview_label.pack(anchor="w", pady=(5, 0))
+        
+        # Icon index management
+        index_frame = ttk.LabelFrame(icon_frame, text="Icon Index Management", padding="10")
+        index_frame.pack(fill=tk.X, pady=(0, 20))
+        
+        ttk.Label(index_frame, 
+                 text="The icon index is used for fast searching. Regenerate it if you change the icon source directory.").pack(anchor="w")
+        
+        index_button_frame = ttk.Frame(index_frame)
+        index_button_frame.pack(fill=tk.X, pady=(5, 0))
+        
+        ttk.Button(index_button_frame, text="Regenerate Icon Index", 
+                  command=self.regenerate_icon_index).pack(side=tk.LEFT, padx=(0, 10))
+        
+        self.index_status_var = tk.StringVar()
+        self.index_status_label = ttk.Label(index_button_frame, textvariable=self.index_status_var, 
+                                          foreground="gray")
+        self.index_status_label.pack(side=tk.LEFT)
+        
+        # Bind to update preview
+        self.icon_base_path_var.trace('w', self.update_icon_preview)
+        self.icon_output_path_var.trace('w', self.update_icon_preview)
+    
+    def browse_icon_base_path(self):
+        """Browse for icon base directory"""
+        directory = filedialog.askdirectory(
+            title="Select Icon Base Directory",
+            initialdir=config_manager.get_icon_base_path()
+        )
+        if directory:
+            self.icon_base_path_var.set(directory)
+    
+    def browse_icon_output_path(self):
+        """Browse for icon output directory"""
+        directory = filedialog.askdirectory(
+            title="Select Icon Output Directory",
+            initialdir=config_manager.get_icon_output_path()
+        )
+        if directory:
+            self.icon_output_path_var.set(directory)
+    
+    def update_icon_preview(self, *args):
+        """Update the icon path preview"""
+        base_path = self.icon_base_path_var.get()
+        output_path = self.icon_output_path_var.get()
+        
+        if base_path and output_path:
+            preview_text = f"Icon name: webmin.svg\nSource: {base_path}/webmin.svg\nCopied to: {output_path}/webmin.svg\nStored as: /{output_path}/webmin.svg"
+            self.icon_preview_var.set(preview_text)
+        else:
+            self.icon_preview_var.set("Configure both paths to see preview")
+    
+    def regenerate_icon_index(self):
+        """Regenerate the icon index from the current base path"""
+        base_path = self.icon_base_path_var.get()
+        if not base_path:
+            messagebox.showerror("Error", "Please set the icon base path first!")
+            return
+        
+        if not os.path.exists(base_path):
+            messagebox.showerror("Error", f"Icon base path does not exist: {base_path}")
+            return
+        
+        self.index_status_var.set("Regenerating index...")
+        self.update()
+        
+        try:
+            # Count SVG files
+            svg_files = [f for f in os.listdir(base_path) if f.endswith('.svg')]
+            
+            # Write index file
+            with open("icon_index.txt", "w") as f:
+                for icon_file in sorted(svg_files):
+                    f.write(f"{icon_file}\n")
+            
+            self.index_status_var.set(f"Index regenerated with {len(svg_files)} icons")
+            messagebox.showinfo("Success", f"Icon index regenerated successfully!\nFound {len(svg_files)} SVG icons in {base_path}")
+            
+        except Exception as e:
+            self.index_status_var.set("Error regenerating index")
+            messagebox.showerror("Error", f"Failed to regenerate icon index: {e}")
     
     def create_advanced_tab(self):
         """Create the advanced settings tab"""
@@ -244,6 +471,12 @@ class ConfigPathWindow(tk.Toplevel):
             entry.delete(0, tk.END)
             entry.insert(0, current_path)
             self.test_config_path(config_name)
+        
+        # Load icon configuration
+        if hasattr(self, 'icon_base_path_var'):
+            self.icon_base_path_var.set(config_manager.get_icon_base_path())
+        if hasattr(self, 'icon_output_path_var'):
+            self.icon_output_path_var.set(config_manager.get_icon_output_path())
     
     def test_config_path(self, config_name):
         """Test a configuration path"""
@@ -300,6 +533,15 @@ class ConfigPathWindow(tk.Toplevel):
     
     def save_paths(self):
         """Save all configuration paths"""
+        # Handle folder selection first
+        if hasattr(self, 'current_folder_var') and self.current_folder_var.get():
+            new_folder = self.current_folder_var.get()
+            if hasattr(self.parent, 'config_folder'):
+                self.parent.config_folder = new_folder
+                self.parent.title(f"Homepage Editor - Simple ({os.path.basename(new_folder)})")
+                if hasattr(self.parent, 'reload_data'):
+                    self.parent.reload_data()
+        
         all_entries = {**self.core_entries, **self.services_entries}
         
         # Validate all paths first
@@ -319,6 +561,17 @@ class ConfigPathWindow(tk.Toplevel):
             path = entry.get().strip()
             if path:
                 config_manager.set_config_path(config_name, path)
+        
+        # Save icon configuration
+        if hasattr(self, 'icon_base_path_var'):
+            base_path = self.icon_base_path_var.get().strip()
+            if base_path:
+                config_manager.set_icon_base_path(base_path)
+        
+        if hasattr(self, 'icon_output_path_var'):
+            output_path = self.icon_output_path_var.get().strip()
+            if output_path:
+                config_manager.set_icon_output_path(output_path)
         
         messagebox.showinfo("Success", "Configuration paths saved successfully!")
         self.destroy()

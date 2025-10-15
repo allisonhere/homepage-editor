@@ -1,9 +1,11 @@
 {
-  "bookmarks": "",
+  "bookmarks": "/home/allie/projects/homepage/bookmarks.yaml",
   "settings": "",
   "services": "",
   "widgets": "",
   "docker": "",
   "kubernetes": "",
-  "proxmox": ""
+  "proxmox": "",
+  "icon_base_path": "dashboard-icons-main/svg",
+  "icon_output_path": "images/icons"
 }

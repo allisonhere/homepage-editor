@@ -28,7 +28,7 @@ The application manages the following configuration files:
 
 ### Method 1: Using the GUI
 1. Launch the Homepage Editor
-2. Go to **File → Configuration Paths...**
+2. Go to **Tools → Configuration Paths...**
 3. Set the path for each configuration file
 4. Click **Save**
 

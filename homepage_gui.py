@@ -256,7 +256,6 @@ class HomepageGUI(ThemedTk):
         # File menu
         file_menu = tk.Menu(menubar, tearoff=0)
         menubar.add_cascade(label="File", menu=file_menu)
-        file_menu.add_command(label="Configuration Paths...", command=self.open_config_paths)
         file_menu.add_command(label="Backup & Restore...", command=self.open_backup_restore)
         file_menu.add_separator()
         file_menu.add_command(label="Exit", command=self.quit)
@@ -264,6 +263,8 @@ class HomepageGUI(ThemedTk):
         # Tools menu
         tools_menu = tk.Menu(menubar, tearoff=0)
         menubar.add_cascade(label="Tools", menu=tools_menu)
+        tools_menu.add_command(label="Configuration...", command=self.open_configuration)
+        tools_menu.add_separator()
         tools_menu.add_command(label="Validate Configurations", command=self.validate_configurations)
         tools_menu.add_command(label="Test All Paths", command=self.test_all_paths)
         
@@ -272,8 +273,8 @@ class HomepageGUI(ThemedTk):
         menubar.add_cascade(label="Help", menu=help_menu)
         help_menu.add_command(label="About", command=self.show_about)
 
-    def open_config_paths(self):
-        """Open configuration paths management window"""
+    def open_configuration(self):
+        """Open unified configuration window"""
         ConfigPathWindow(self)
 
     def open_backup_restore(self):

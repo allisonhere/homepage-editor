@@ -48,9 +48,9 @@
       href: https://z-lib.id/
       icon: /images/icons/zlib.svg
 - Servers:
-  - icon: images/icons/webmin.svg
+  - icon: /images/icons/webmin.svg
     name: Webmin - Jarvis
     url: http://jarvis:10000
-  - icon: ('webmin.svg', 'dashboard-icons-main/svg/webmin.svg')
+  - icon: /images/icons/webmin.svg
     name: Webmin - Cent
     url: http://cent:10000

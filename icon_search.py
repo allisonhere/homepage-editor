@@ -8,6 +8,7 @@ import threading
 import time
 from collections import defaultdict
 import re
+from config_manager import config_manager
 
 # Try to import cairosvg for SVG support, fallback to PNG if not available
 try:
@@ -128,8 +129,18 @@ class IconSearchWindow(tk.Toplevel):
         """Load icon index in a separate thread to avoid blocking UI"""
         def load_icons():
             try:
-                with open("icon_index.txt", "r") as f:
-                    self.icon_names = [line.strip() for line in f if line.strip()]
+                # Try to load from icon_index.txt first, then scan directory if not found
+                icon_index_path = "icon_index.txt"
+                if os.path.exists(icon_index_path):
+                    with open(icon_index_path, "r") as f:
+                        self.icon_names = [line.strip() for line in f if line.strip()]
+                else:
+                    # If no index file, scan the icon directory directly
+                    icon_dir = config_manager.get_icon_base_path()
+                    if os.path.exists(icon_dir):
+                        self.icon_names = [f for f in os.listdir(icon_dir) if f.endswith('.svg')]
+                    else:
+                        self.icon_names = []
                 
                 # Sort icons alphabetically for better organization
                 self.icon_names.sort()
@@ -137,7 +148,7 @@ class IconSearchWindow(tk.Toplevel):
                 # Update UI in main thread
                 self.after(0, self.on_icons_loaded)
             except FileNotFoundError:
-                self.after(0, lambda: messagebox.showerror("Error", "Icon index file not found!"))
+                self.after(0, lambda: messagebox.showerror("Error", "Icon index file not found and icon directory is not accessible!"))
             except Exception as e:
                 self.after(0, lambda: messagebox.showerror("Error", f"Failed to load icons: {e}"))
         
@@ -257,7 +268,7 @@ class IconSearchWindow(tk.Toplevel):
     def create_icon_button(self, icon_name, row, col):
         """Create an icon button with improved styling"""
         try:
-            icon_path = os.path.join("dashboard-icons-main/svg", icon_name)
+            icon_path = os.path.join(config_manager.get_icon_base_path(), icon_name)
             
             # Load icon with caching
             if icon_path not in self.icon_cache:
@@ -349,12 +360,12 @@ class IconSearchWindow(tk.Toplevel):
         icon_name, icon_path = self.selected_icon
         
         try:
-            # Copy the icon to the images/icons directory
-            new_icon_path = os.path.join("images/icons", os.path.basename(icon_path))
+            # Copy the icon to the configured output directory
+            new_icon_path = os.path.join(config_manager.get_icon_output_path(), os.path.basename(icon_path))
             shutil.copy(icon_path, new_icon_path)
             
             # Update the icon field in the parent window
-            self.update_parent_icon_field(new_icon_path)
+            self.update_parent_icon_field(os.path.abspath(new_icon_path))
             
             self.destroy()
             
@@ -362,43 +373,42 @@ class IconSearchWindow(tk.Toplevel):
             messagebox.showerror("Error", f"Failed to copy icon: {e}")
     
     def update_parent_icon_field(self, icon_path):
-        """Update the parent window's icon field based on its type"""
+        """Update the parent window's icon field with the icon path"""
         try:
-            # Check if parent has entries dictionary (old format)
-            if hasattr(self.parent, 'entries') and 'Icon' in self.parent.entries:
-                self.parent.entries["Icon"].delete(0, tk.END)
-                self.parent.entries["Icon"].insert(0, icon_path)
-            # Check if parent has icon_var (BookmarkDialog format)
-            elif hasattr(self.parent, 'icon_var'):
-                self.parent.icon_var.set(icon_path)
-            # Check if parent has icon_entry (alternative format)
-            elif hasattr(self.parent, 'icon_entry'):
-                self.parent.icon_entry.delete(0, tk.END)
-                self.parent.icon_entry.insert(0, icon_path)
+            # Convert absolute path to the format expected by Homepage
+            # From: /full/path/to/output/icons/webmin.svg
+            # To: /images/icons/webmin.svg (or whatever the output path is)
+            icon_name = os.path.basename(icon_path)
+            output_path = config_manager.get_icon_output_path()
+            # Ensure output_path doesn't start with / to avoid double slashes
+            if output_path.startswith('/'):
+                output_path = output_path[1:]
+            homepage_icon_path = f"/{output_path}/{icon_name}"
+            
+            # Just set the icon_var - this is what BookmarkDialog uses
+            if hasattr(self.parent, 'icon_var'):
+                self.parent.icon_var.set(homepage_icon_path)
             else:
-                # Fallback: try to find any Entry widget with "icon" in its name
-                for widget in self.parent.winfo_children():
-                    if isinstance(widget, tk.Entry) and 'icon' in str(widget).lower():
-                        widget.delete(0, tk.END)
-                        widget.insert(0, icon_path)
-                        break
+                # For main GUI, update the Icon entry field directly
+                if hasattr(self.parent, 'entries') and 'Icon' in self.parent.entries:
+                    self.parent.entries['Icon'].delete(0, tk.END)
+                    self.parent.entries['Icon'].insert(0, homepage_icon_path)
                 else:
-                    # If no icon field found, just show a message
-                    messagebox.showinfo("Icon Selected", f"Icon selected: {os.path.basename(icon_path)}\n\nYou can copy this path manually to your icon field.")
+                    # Fallback message
+                    messagebox.showinfo("Icon Selected", f"Icon path: {homepage_icon_path}")
         except Exception as e:
             print(f"Error updating parent icon field: {e}")
-            # Show a fallback message
-            messagebox.showinfo("Icon Selected", f"Icon selected: {os.path.basename(icon_path)}\n\nYou can copy this path manually to your icon field.")
+            messagebox.showinfo("Icon Selected", f"Icon path: {icon_path}")
 
     def select_icon(self, icon_path):
         """Legacy method for backward compatibility"""
         try:
-            # Copy the icon to the images/icons directory
-            new_icon_path = os.path.join("images/icons", os.path.basename(icon_path))
+            # Copy the icon to the configured output directory
+            new_icon_path = os.path.join(config_manager.get_icon_output_path(), os.path.basename(icon_path))
             shutil.copy(icon_path, new_icon_path)
             
             # Update the icon field in the parent window
-            self.update_parent_icon_field(new_icon_path)
+            self.update_parent_icon_field(os.path.abspath(new_icon_path))
             
             self.destroy()
             

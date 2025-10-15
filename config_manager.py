@@ -51,6 +51,10 @@ class ConfigManager:
             "proxmox": ConfigFile("proxmox.yaml", "", False),
         }
         
+        # Icon configuration
+        self.icon_base_path = "dashboard-icons-main/svg"  # Default icon base path
+        self.icon_output_path = "images/icons"  # Where to copy selected icons
+        
         # Load configuration paths
         self.load_config_paths()
         
@@ -66,6 +70,10 @@ class ConfigManager:
                     for key, path in paths.items():
                         if key in self.config_files:
                             self.config_files[key].path = path
+                        elif key == "icon_base_path":
+                            self.icon_base_path = path
+                        elif key == "icon_output_path":
+                            self.icon_output_path = path
             else:
                 # Initialize with default paths (current directory)
                 self.save_config_paths()
@@ -77,6 +85,8 @@ class ConfigManager:
         """Save current configuration file paths"""
         try:
             paths = {key: config.path for key, config in self.config_files.items()}
+            paths["icon_base_path"] = self.icon_base_path
+            paths["icon_output_path"] = self.icon_output_path
             with open(self.config_file, 'w') as f:
                 json.dump(paths, f, indent=2)
         except Exception as e:
@@ -354,8 +364,222 @@ class ConfigManager:
             elif not Path(path).exists():
                 errors.append(f"{name}: File not found at {path}")
                 all_valid = False
+            else:
+                # File exists and is accessible, now validate YAML syntax and structure
+                yaml_errors = self.validate_yaml_file(name, path)
+                if yaml_errors:
+                    errors.extend(yaml_errors)
+                    all_valid = False
         
         return all_valid, errors
+    
+    def validate_yaml_file(self, config_name: str, path: str) -> List[str]:
+        """Validate YAML file syntax and structure"""
+        errors = []
+        
+        try:
+            # Try to parse the YAML file
+            with open(path, 'r', encoding='utf-8') as f:
+                data = yaml.safe_load(f)
+            
+            # Validate structure based on config type
+            if config_name == "bookmarks":
+                errors.extend(self.validate_bookmarks_structure(data))
+            elif config_name == "settings":
+                errors.extend(self.validate_settings_structure(data))
+            elif config_name == "services":
+                errors.extend(self.validate_services_structure(data))
+                
+        except yaml.YAMLError as e:
+            errors.append(f"{config_name}: YAML syntax error - {str(e)}")
+        except Exception as e:
+            errors.append(f"{config_name}: Error reading file - {str(e)}")
+        
+        return errors
+    
+    def validate_bookmarks_structure(self, data) -> List[str]:
+        """Validate bookmarks.yaml structure"""
+        errors = []
+        
+        if not isinstance(data, list):
+            errors.append("bookmarks: Root element must be a list")
+            return errors
+        
+        for i, category in enumerate(data):
+            if not isinstance(category, dict):
+                errors.append(f"bookmarks: Category {i+1} must be a dictionary")
+                continue
+                
+            if len(category) != 1:
+                errors.append(f"bookmarks: Category {i+1} must have exactly one key (category name)")
+                continue
+            
+            category_name = list(category.keys())[0]
+            bookmarks = category[category_name]
+            
+            if not isinstance(bookmarks, list):
+                errors.append(f"bookmarks: Category '{category_name}' must contain a list of bookmarks")
+                continue
+            
+            for j, bookmark in enumerate(bookmarks):
+                if not isinstance(bookmark, dict):
+                    errors.append(f"bookmarks: Bookmark {j+1} in category '{category_name}' must be a dictionary")
+                    continue
+                
+                # Check if this is the new format (bookmark name as key with properties as list)
+                if len(bookmark) == 1:
+                    bookmark_name = list(bookmark.keys())[0]
+                    bookmark_props = bookmark[bookmark_name]
+                    
+                    if isinstance(bookmark_props, list) and len(bookmark_props) > 0:
+                        # New format: bookmark name as key, properties as list
+                        props = bookmark_props[0] if isinstance(bookmark_props[0], dict) else {}
+                        required_fields = ['abbr', 'href', 'icon']
+                        for field in required_fields:
+                            if field not in props:
+                                errors.append(f"bookmarks: Bookmark '{bookmark_name}' in category '{category_name}' missing required field '{field}'")
+                            elif field == 'abbr':
+                                # abbr can be string or integer
+                                if not isinstance(props[field], (str, int)) or str(props[field]).strip() == '':
+                                    errors.append(f"bookmarks: Bookmark '{bookmark_name}' in category '{category_name}' field '{field}' must be a non-empty string or integer")
+                            elif not isinstance(props[field], str) or not props[field].strip():
+                                errors.append(f"bookmarks: Bookmark '{bookmark_name}' in category '{category_name}' field '{field}' must be a non-empty string")
+                    else:
+                        errors.append(f"bookmarks: Bookmark '{bookmark_name}' in category '{category_name}' must have properties as a list")
+                else:
+                    # Check for different formats
+                    if 'name' in bookmark and 'url' in bookmark:
+                        # Servers format: name, url, icon
+                        required_fields = ['name', 'url', 'icon']
+                        for field in required_fields:
+                            if field not in bookmark:
+                                errors.append(f"bookmarks: Bookmark {j+1} in category '{category_name}' missing required field '{field}'")
+                            elif not isinstance(bookmark[field], str) or not bookmark[field].strip():
+                                errors.append(f"bookmarks: Bookmark {j+1} in category '{category_name}' field '{field}' must be a non-empty string")
+                    else:
+                        # Standard format: abbr, href, icon
+                        required_fields = ['abbr', 'href', 'icon']
+                        for field in required_fields:
+                            if field not in bookmark:
+                                errors.append(f"bookmarks: Bookmark {j+1} in category '{category_name}' missing required field '{field}'")
+                            elif field == 'abbr':
+                                # abbr can be string or integer
+                                if not isinstance(bookmark[field], (str, int)) or str(bookmark[field]).strip() == '':
+                                    errors.append(f"bookmarks: Bookmark {j+1} in category '{category_name}' field '{field}' must be a non-empty string or integer")
+                            elif not isinstance(bookmark[field], str) or not bookmark[field].strip():
+                                errors.append(f"bookmarks: Bookmark {j+1} in category '{category_name}' field '{field}' must be a non-empty string")
+        
+        return errors
+    
+    def validate_settings_structure(self, data) -> List[str]:
+        """Validate settings.yaml structure"""
+        errors = []
+        
+        if not isinstance(data, dict):
+            errors.append("settings: Root element must be a dictionary")
+            return errors
+        
+        # Check for layout field
+        if 'layout' not in data:
+            errors.append("settings: Missing required field 'layout'")
+        elif not isinstance(data['layout'], list):
+            errors.append("settings: Field 'layout' must be a list")
+        else:
+            # Validate layout items - each item is a dict with category name as key
+            for i, item in enumerate(data['layout']):
+                if not isinstance(item, dict):
+                    errors.append(f"settings: Layout item {i+1} must be a dictionary")
+                    continue
+                
+                if len(item) != 1:
+                    errors.append(f"settings: Layout item {i+1} must have exactly one key (category name)")
+                    continue
+                
+                category_name = list(item.keys())[0]
+                category_config = item[category_name]
+                
+                if not isinstance(category_config, dict):
+                    errors.append(f"settings: Category '{category_name}' configuration must be a dictionary")
+                    continue
+                
+                # Check for required fields in category config
+                required_fields = ['columns', 'style']
+                for field in required_fields:
+                    if field not in category_config:
+                        errors.append(f"settings: Category '{category_name}' missing required field '{field}'")
+                    elif field == 'columns' and not isinstance(category_config[field], int):
+                        errors.append(f"settings: Category '{category_name}' field 'columns' must be an integer")
+                    elif field == 'style' and not isinstance(category_config[field], str):
+                        errors.append(f"settings: Category '{category_name}' field 'style' must be a string")
+        
+        return errors
+    
+    def validate_services_structure(self, data) -> List[str]:
+        """Validate services.yaml structure"""
+        errors = []
+        
+        if not isinstance(data, list):
+            errors.append("services: Root element must be a list")
+            return errors
+        
+        for i, service in enumerate(data):
+            if not isinstance(service, dict):
+                errors.append(f"services: Service {i+1} must be a dictionary")
+                continue
+            
+            # Check required fields for services
+            required_fields = ['name', 'url']
+            for field in required_fields:
+                if field not in service:
+                    errors.append(f"services: Service {i+1} missing required field '{field}'")
+                elif not isinstance(service[field], str) or not service[field].strip():
+                    errors.append(f"services: Service {i+1} field '{field}' must be a non-empty string")
+        
+        return errors
+    
+    def get_icon_base_path(self):
+        """Get the base path for icons"""
+        return self.icon_base_path
+    
+    def set_icon_base_path(self, path):
+        """Set the base path for icons"""
+        self.icon_base_path = path
+        # Save to config file
+        self.save_config_paths()
+    
+    def get_icon_output_path(self):
+        """Get the output path for copied icons"""
+        return self.icon_output_path
+    
+    def set_icon_output_path(self, path):
+        """Set the output path for copied icons"""
+        self.icon_output_path = path
+        # Save to config file
+        self.save_config_paths()
+    
+    def get_full_icon_path(self, icon_name):
+        """Get the full path for an icon based on its name"""
+        if not icon_name:
+            return ""
+        
+        # If it's already a full path, return as is
+        if '/' in icon_name or icon_name.startswith('http'):
+            return icon_name
+        
+        # Otherwise, construct the path using the base path
+        return os.path.join(self.icon_base_path, icon_name)
+    
+    def get_display_icon_path(self, icon_name):
+        """Get the display path for an icon (for UI display)"""
+        if not icon_name:
+            return ""
+        
+        # If it's already a full path, return as is
+        if '/' in icon_name or icon_name.startswith('http'):
+            return icon_name
+        
+        # For display, show just the icon name
+        return icon_name
 
 # Global instance
 config_manager = ConfigManager()
