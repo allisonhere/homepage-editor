@@ -11,10 +11,6 @@
     - abbr: CP
       href: https://jarvis:9090/system
       icon: /images/icons/cockpit.svg
-  - test:
-    - abbr: tt
-      href: test.com
-      icon: test.svg
 - Social:
   - Reddit:
     - abbr: RE
@@ -52,7 +48,9 @@
       href: https://z-lib.id/
       icon: /images/icons/zlib.svg
 - Servers:
-  - Webmin - Jarvis:
-    - abbr: WJ
-      href: http://jarvis:10000
-      icon: /images/icons/webmin.svg
+  - icon: images/icons/webmin.svg
+    name: Webmin - Jarvis
+    url: http://jarvis:10000
+  - icon: ('webmin.svg', 'dashboard-icons-main/svg/webmin.svg')
+    name: Webmin - Cent
+    url: http://cent:10000

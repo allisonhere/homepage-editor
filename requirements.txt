@@ -1,0 +1,7 @@
+# Core dependencies for Homepage Editor
+PyYAML>=6.0
+Pillow>=9.0.0
+ttkthemes>=3.2.2
+
+# Optional dependencies for enhanced functionality
+cairosvg>=2.5.0  # For SVG icon support (optional but recommended)

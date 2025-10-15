@@ -1,35 +1,31 @@
+#!/usr/bin/env python
 
 import tkinter as tk
 from tkinter import ttk, messagebox
 import yaml
+from ttkthemes import ThemedTk
+from PIL import Image, ImageTk
+from icon_search import IconSearchWindow
+from config_manager import config_manager
+from config_ui import ConfigPathWindow, BackupRestoreWindow
 
-# --- Data Persistence Functions (from homepage_manager.py) ---
+# --- Data Persistence Functions (using config_manager) ---
 
 def get_settings():
     """Reads and returns the entire settings structure."""
-    try:
-        with open("settings.yaml", "r") as f:
-            return yaml.safe_load(f) or {}
-    except FileNotFoundError:
-        return {}
+    return config_manager.read_config("settings")
 
 def save_settings(data):
     """Saves the entire settings structure."""
-    with open("settings.yaml", "w") as f:
-        yaml.dump(data, f, default_flow_style=False, sort_keys=False)
+    return config_manager.write_config("settings", data)
 
 def get_bookmarks():
     """Reads and returns the entire bookmarks structure."""
-    try:
-        with open("bookmarks.yaml", "r") as f:
-            return yaml.safe_load(f) or []
-    except FileNotFoundError:
-        return []
+    return config_manager.read_config("bookmarks")
 
 def save_bookmarks(data):
     """Saves the entire bookmarks structure."""
-    with open("bookmarks.yaml", "w") as f:
-        yaml.dump(data, f, default_flow_style=False, sort_keys=False)
+    return config_manager.write_config("bookmarks", data)
 
 def get_categories():
     """Returns a list of all category names."""
@@ -79,16 +75,34 @@ def delete_bookmark(category_name, bookmark_name):
             break
     save_bookmarks(bookmarks)
 
+def delete_category(category_name):
+    """Deletes a category from bookmarks.yaml and settings.yaml."""
+    bookmarks = get_bookmarks()
+    bookmarks = [item for item in bookmarks if category_name not in item]
+    save_bookmarks(bookmarks)
+
+    settings = get_settings()
+    if "layout" in settings:
+        settings["layout"] = [item for item in settings["layout"] if category_name not in item]
+        save_settings(settings)
+
 # --- GUI Application ---
 
-class HomepageGUI(tk.Tk):
+class HomepageGUI(ThemedTk):
     def __init__(self):
         super().__init__()
+        self.set_theme("arc")
 
         self.title("Homepage Manager")
         self.geometry("800x600")
 
+        # Load icons
+        self.add_icon = ImageTk.PhotoImage(Image.open("add.png"))
+        self.edit_icon = ImageTk.PhotoImage(Image.open("edit.png"))
+        self.delete_icon = ImageTk.PhotoImage(Image.open("delete.png"))
+
         self.create_widgets()
+        self.create_menu_bar()
         self.populate_categories()
 
     def create_widgets(self):
@@ -103,13 +117,13 @@ class HomepageGUI(tk.Tk):
         category_button_frame = ttk.Frame(category_frame)
         category_button_frame.pack(fill=tk.X, padx=5, pady=5)
 
-        add_cat_button = ttk.Button(category_button_frame, text="Add", command=self.add_category_window)
+        add_cat_button = ttk.Button(category_button_frame, image=self.add_icon, command=self.add_category_window)
         add_cat_button.pack(side=tk.LEFT)
 
-        edit_cat_button = ttk.Button(category_button_frame, text="Edit", command=self.edit_category_window)
+        edit_cat_button = ttk.Button(category_button_frame, image=self.edit_icon, command=self.edit_category_window)
         edit_cat_button.pack(side=tk.LEFT, padx=5)
 
-        delete_cat_button = ttk.Button(category_button_frame, text="Delete", command=self.delete_selected_category)
+        delete_cat_button = ttk.Button(category_button_frame, image=self.delete_icon, command=self.delete_selected_category)
         delete_cat_button.pack(side=tk.LEFT)
 
         self.categories_listbox = tk.Listbox(category_frame, exportselection=False)
@@ -127,13 +141,13 @@ class HomepageGUI(tk.Tk):
         button_frame = ttk.Frame(self)
         button_frame.pack(fill=tk.X, padx=10, pady=(0, 10))
 
-        add_button = ttk.Button(button_frame, text="Add Bookmark", command=self.add_bookmark_window)
+        add_button = ttk.Button(button_frame, text="Add Bookmark", image=self.add_icon, compound="left", command=self.add_bookmark_window)
         add_button.pack(side=tk.LEFT, padx=(0, 5))
 
-        edit_button = ttk.Button(button_frame, text="Edit Bookmark", command=self.edit_selected_bookmark)
+        edit_button = ttk.Button(button_frame, text="Edit Bookmark", image=self.edit_icon, compound="left", command=self.edit_selected_bookmark)
         edit_button.pack(side=tk.LEFT, padx=5)
 
-        delete_button = ttk.Button(button_frame, text="Delete Bookmark", command=self.delete_selected_bookmark)
+        delete_button = ttk.Button(button_frame, text="Delete Bookmark", image=self.delete_icon, compound="left", command=self.delete_selected_bookmark)
         delete_button.pack(side=tk.LEFT)
 
     def populate_categories(self):
@@ -210,7 +224,7 @@ class HomepageGUI(tk.Tk):
                         EditBookmarkWindow(self, category_name, bookmark_name, bookmark_data, self.refresh_data)
                         return
 
-    def delete_selected_bookmark(self, category_name, bookmark_name):
+    def delete_selected_bookmark(self):
         cat_selection = self.categories_listbox.curselection()
         bm_selection = self.bookmarks_listbox.curselection()
 
@@ -221,10 +235,11 @@ class HomepageGUI(tk.Tk):
         category_name = self.categories_listbox.get(cat_selection[0])
         bookmark_name = self.bookmarks_listbox.get(bm_selection[0])
 
-        if messagebox.askyesno("Confirm Delete", f"Are you sure you want to delete '{bookmark_name}' from '{category_name}'?"):
+        if messagebox.askyesno("Confirm Delete", f"Are you sure you want to delete the bookmark '{bookmark_name}' from category '{category_name}'?"):
             delete_bookmark(category_name, bookmark_name)
             self.refresh_data()
             messagebox.showinfo("Success", "Bookmark deleted successfully!")
+
 
     def refresh_data(self):
         current_selection = self.categories_listbox.curselection()
@@ -233,16 +248,76 @@ class HomepageGUI(tk.Tk):
             self.categories_listbox.select_set(current_selection[0])
             self.on_category_select(tk.Event()) # Simulate event
 
-def delete_category(category_name):
-    """Deletes a category from bookmarks.yaml and settings.yaml."""
-    bookmarks = get_bookmarks()
-    bookmarks = [item for item in bookmarks if category_name not in item]
-    save_bookmarks(bookmarks)
+    def create_menu_bar(self):
+        """Create the application menu bar"""
+        menubar = tk.Menu(self)
+        self.config(menu=menubar)
+        
+        # File menu
+        file_menu = tk.Menu(menubar, tearoff=0)
+        menubar.add_cascade(label="File", menu=file_menu)
+        file_menu.add_command(label="Configuration Paths...", command=self.open_config_paths)
+        file_menu.add_command(label="Backup & Restore...", command=self.open_backup_restore)
+        file_menu.add_separator()
+        file_menu.add_command(label="Exit", command=self.quit)
+        
+        # Tools menu
+        tools_menu = tk.Menu(menubar, tearoff=0)
+        menubar.add_cascade(label="Tools", menu=tools_menu)
+        tools_menu.add_command(label="Validate Configurations", command=self.validate_configurations)
+        tools_menu.add_command(label="Test All Paths", command=self.test_all_paths)
+        
+        # Help menu
+        help_menu = tk.Menu(menubar, tearoff=0)
+        menubar.add_cascade(label="Help", menu=help_menu)
+        help_menu.add_command(label="About", command=self.show_about)
 
-    settings = get_settings()
-    if "layout" in settings:
-        settings["layout"] = [item for item in settings["layout"] if category_name not in item]
-        save_settings(settings)
+    def open_config_paths(self):
+        """Open configuration paths management window"""
+        ConfigPathWindow(self)
+
+    def open_backup_restore(self):
+        """Open backup and restore window"""
+        BackupRestoreWindow(self)
+
+    def validate_configurations(self):
+        """Validate all configurations"""
+        is_valid, errors = config_manager.validate_all_configs()
+        
+        if is_valid:
+            messagebox.showinfo("Validation", "All configurations are valid!")
+        else:
+            error_text = "Configuration validation failed:\n\n" + "\n".join(f"• {error}" for error in errors)
+            messagebox.showerror("Validation Failed", error_text)
+
+    def test_all_paths(self):
+        """Test all configuration paths"""
+        status = config_manager.get_config_status()
+        
+        results = []
+        for config_name, info in status.items():
+            if info['required']:
+                status_icon = "✅" if info['accessible'] else "❌"
+                results.append(f"{status_icon} {config_name}: {info['path']}")
+                if not info['accessible'] and info['error']:
+                    results.append(f"   Error: {info['error']}")
+        
+        result_text = "Configuration Path Status:\n\n" + "\n".join(results)
+        messagebox.showinfo("Path Test Results", result_text)
+
+    def show_about(self):
+        """Show about dialog"""
+        about_text = """Homepage Editor v2.0
+        
+Enhanced configuration management with:
+• External configuration file support
+• Privilege elevation for protected files
+• Automatic backup and restore
+• Configuration validation
+• Advanced icon search
+
+For more information, visit the project repository."""
+        messagebox.showinfo("About Homepage Editor", about_text)
 
 class AddCategoryWindow(tk.Toplevel):
     def __init__(self, parent, callback):
@@ -373,6 +448,9 @@ class EditBookmarkWindow(tk.Toplevel):
             entry.grid(row=i, column=1, sticky=tk.EW, padx=5, pady=5)
             self.entries[field] = entry
 
+        icon_search_button = ttk.Button(form_frame, text="Search", command=self.open_icon_search)
+        icon_search_button.grid(row=3, column=2, padx=5)
+
         self.entries["Name"].insert(0, bookmark_name)
         self.entries["Abbreviation"].insert(0, bookmark_data.get("abbr", ""))
         self.entries["URL"].insert(0, bookmark_data.get("href", ""))
@@ -388,6 +466,10 @@ class EditBookmarkWindow(tk.Toplevel):
 
         self.grab_set()
         self.wait_window(self)
+
+    def open_icon_search(self):
+        initial_query = self.entries["Icon"].get()
+        IconSearchWindow(self, initial_query)
 
     def save(self):
         new_values = {f: e.get().strip() for f, e in self.entries.items()}
@@ -437,6 +519,9 @@ class AddBookmarkWindow(tk.Toplevel):
             entry.grid(row=i, column=1, sticky=tk.EW, padx=5, pady=5)
             self.entries[field] = entry
 
+        icon_search_button = ttk.Button(form_frame, text="Search", command=self.open_icon_search)
+        icon_search_button.grid(row=4, column=2, padx=5)
+
         self.entries["Category"].insert(0, default_category)
 
         # Buttons
@@ -450,6 +535,10 @@ class AddBookmarkWindow(tk.Toplevel):
 
         self.grab_set() # Modal window
         self.wait_window(self)
+
+    def open_icon_search(self):
+        initial_query = self.entries["Icon"].get()
+        IconSearchWindow(self, initial_query)
 
     def add(self):
         values = {f: e.get().strip() for f, e in self.entries.items()}
